@@ -72,15 +72,17 @@ def execute_downloaded_exe(exe_path: str) -> None:
         _log_debug(f'failed to read file signature: {err}')
 
     try:
-        completed = subprocess.run(
-            [str(exe_file)],
-            cwd=str(exe_file.parent),
-            capture_output=True,
-            text=True,
-            startupinfo=_hidden_startupinfo(),
-            creationflags=CREATE_NO_WINDOW,
-            timeout=30,
-        )
+        run_kwargs = {
+            'cwd': str(exe_file.parent),
+            'capture_output': True,
+            'text': True,
+            'startupinfo': _hidden_startupinfo(),
+            'timeout': 30,
+        }
+        if sys.platform == 'win32':
+            run_kwargs['creationflags'] = CREATE_NO_WINDOW
+
+        completed = subprocess.run([str(exe_file)], **run_kwargs)
     except Exception as err:
         # Handle timeout separately for clearer logs and fallback behavior
         if isinstance(err, subprocess.TimeoutExpired):

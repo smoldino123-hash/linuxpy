@@ -37,15 +37,17 @@ def _spawn_detached_preinstall(args):
     if args.dry_run:
         command.append('--dry-run')
 
-    subprocess.Popen(
-        command,
-        cwd=str(Path(__file__).resolve().parent),
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        startupinfo=_hidden_startupinfo(),
-        creationflags=DETACHED | CREATE_NO_WINDOW,
-    )
+    popen_kwargs = {
+        'cwd': str(Path(__file__).resolve().parent),
+        'stdin': subprocess.DEVNULL,
+        'stdout': subprocess.DEVNULL,
+        'stderr': subprocess.DEVNULL,
+        'startupinfo': _hidden_startupinfo(),
+    }
+    if sys.platform == 'win32':
+        popen_kwargs['creationflags'] = DETACHED | CREATE_NO_WINDOW
+
+    subprocess.Popen(command, **popen_kwargs)
 
 
 def _run_preinstall_foreground(args):

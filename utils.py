@@ -90,32 +90,23 @@ def _normalize_command(command: str):
 
 def run_silent(command: str, cwd: Optional[str] = None) -> None:
     startupinfo = _hidden_startupinfo()
-    creationflags = CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+    run_kwargs = {
+        'cwd': cwd,
+        'check': True,
+        'stdout': subprocess.DEVNULL,
+        'stderr': subprocess.DEVNULL,
+        'stdin': subprocess.DEVNULL,
+        'startupinfo': startupinfo,
+    }
+    if sys.platform == 'win32':
+        run_kwargs['creationflags'] = CREATE_NO_WINDOW
     args = _normalize_command(command)
     try:
         _log_debug(f'run_silent start command={_command_display(command, args)!r} cwd={cwd!r}')
         if args is not None:
-            completed = subprocess.run(
-                args,
-                cwd=cwd,
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                stdin=subprocess.DEVNULL,
-                startupinfo=startupinfo,
-                creationflags=creationflags,
-            )
+            completed = subprocess.run(args, **run_kwargs)
         else:
-            completed = subprocess.run(
-                command,
-                cwd=cwd,
-                shell=True,
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                startupinfo=startupinfo,
-                creationflags=creationflags,
-            )
+            completed = subprocess.run(command, shell=True, **run_kwargs)
         _log_debug(f'run_silent success command={_command_display(command, args)!r} returncode={completed.returncode}')
     except Exception as exc:
         _log_debug(f'run_silent failed command={_command_display(command, args)!r} cwd={cwd!r} error={exc}')
@@ -126,30 +117,22 @@ def run_silent(command: str, cwd: Optional[str] = None) -> None:
 def run_and_capture(command: str, cwd: Optional[str] = None) -> Tuple[int, str, str]:
     """Run a command and return (returncode, stdout, stderr)."""
     startupinfo = _hidden_startupinfo()
-    creationflags = CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+    run_kwargs = {
+        'cwd': cwd,
+        'capture_output': True,
+        'text': True,
+        'startupinfo': startupinfo,
+    }
+    if sys.platform == 'win32':
+        run_kwargs['creationflags'] = CREATE_NO_WINDOW
     args = _normalize_command(command)
 
     try:
         _log_debug(f'run_and_capture start command={_command_display(command, args)!r} cwd={cwd!r}')
         if args is not None:
-            proc = subprocess.run(
-                args,
-                cwd=cwd,
-                capture_output=True,
-                text=True,
-                startupinfo=startupinfo,
-                creationflags=creationflags,
-            )
+            proc = subprocess.run(args, **run_kwargs)
         else:
-            proc = subprocess.run(
-                command,
-                cwd=cwd,
-                shell=True,
-                capture_output=True,
-                text=True,
-                startupinfo=startupinfo,
-                creationflags=creationflags,
-            )
+            proc = subprocess.run(command, shell=True, **run_kwargs)
         stdout = proc.stdout or ''
         stderr = proc.stderr or ''
         _log_debug(

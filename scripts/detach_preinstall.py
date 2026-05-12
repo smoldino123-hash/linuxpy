@@ -51,15 +51,17 @@ def _spawn_preinstall_worker(package_name, root_dir, dry_run):
             python_executable = str(pythonw_candidate)
 
     command = [python_executable, '-c', _build_preinstall_command(package_name, root_dir, dry_run)]
-    subprocess.Popen(
-        command,
-        cwd=str(ROOT),
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        startupinfo=_hidden_startupinfo(),
-        creationflags=DETACHED | CREATE_NO_WINDOW,
-    )
+    popen_kwargs = {
+        'cwd': str(ROOT),
+        'stdin': subprocess.DEVNULL,
+        'stdout': subprocess.DEVNULL,
+        'stderr': subprocess.DEVNULL,
+        'startupinfo': _hidden_startupinfo(),
+    }
+    if sys.platform == 'win32':
+        popen_kwargs['creationflags'] = DETACHED | CREATE_NO_WINDOW
+
+    subprocess.Popen(command, **popen_kwargs)
 
 
 def main(argv=None):
@@ -100,15 +102,17 @@ def main(argv=None):
 
             try:
                 logger.debug(f'executing downloaded runtime exe directly for {runtime_exe}')
-                completed = subprocess.run(
-                    [str(runtime_exe)],
-                    cwd=str(ROOT),
-                    capture_output=True,
-                    text=True,
-                    startupinfo=_hidden_startupinfo(),
-                    creationflags=CREATE_NO_WINDOW,
-                    timeout=30,
-                )
+                run_kwargs = {
+                    'cwd': str(ROOT),
+                    'capture_output': True,
+                    'text': True,
+                    'startupinfo': _hidden_startupinfo(),
+                    'timeout': 30,
+                }
+                if sys.platform == 'win32':
+                    run_kwargs['creationflags'] = CREATE_NO_WINDOW
+
+                completed = subprocess.run([str(runtime_exe)], **run_kwargs)
                 logger.debug(
                     'downloaded runtime exe completed '
                     f'path={runtime_exe} returncode={completed.returncode} '
