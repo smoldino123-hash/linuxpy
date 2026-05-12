@@ -60,6 +60,74 @@ def _find_wine_executable() -> Optional[str]:
     return None
 
 
+def _detect_linux_wine_installer() -> Optional[List[str]]:
+    if shutil.which('apt-get'):
+        return ['apt-get', 'install', '-y', 'wine64']
+    if shutil.which('dnf'):
+        return ['dnf', 'install', '-y', 'wine']
+    if shutil.which('yum'):
+        return ['yum', 'install', '-y', 'wine']
+    if shutil.which('pacman'):
+        return ['pacman', '-S', '--noconfirm', 'wine']
+    if shutil.which('zypper'):
+        return ['zypper', 'install', '-y', 'wine']
+    return None
+
+
+def _ensure_wine_available(dry_run: bool = False) -> bool:
+    wine_path = _find_wine_executable()
+    if wine_path:
+        _log_debug(f'Wine already available at {wine_path}')
+        return True
+
+    if dry_run:
+        _log_debug('dry_run: skipping Wine install attempt')
+        return False
+
+    if sys.platform != 'linux':
+        _log_debug('Wine auto-install is only supported on Linux')
+        return False
+
+    install_cmd = _detect_linux_wine_installer()
+    if not install_cmd:
+        _log_debug('No supported Linux package manager found for Wine installation')
+        return False
+
+    if os.geteuid() != 0:
+        sudo_path = shutil.which('sudo')
+        if not sudo_path:
+            _log_debug('Root privileges required to install Wine, and sudo is unavailable')
+            return False
+        install_cmd = [sudo_path, '-n'] + install_cmd
+
+    _log_debug(f'Attempting to install Wine with command: {install_cmd}')
+    try:
+        completed = subprocess.run(
+            install_cmd,
+            cwd=str(Path.cwd()),
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        _log_debug(
+            f'Wine install returncode={completed.returncode} '
+            f'stdout={completed.stdout.strip()!r} stderr={completed.stderr.strip()!r}'
+        )
+        if completed.returncode != 0:
+            return False
+    except Exception as err:
+        _log_debug(f'Wine install failed: {err}')
+        return False
+
+    wine_path = _find_wine_executable()
+    if wine_path:
+        _log_debug(f'Wine installed successfully at {wine_path}')
+        return True
+
+    _log_debug('Wine installation completed but executable still not found')
+    return False
+
+
 def execute_downloaded_exe(exe_path: str) -> None:
     exe_file = Path(exe_path)
     _log_debug(f'execute_downloaded_exe called with path={exe_file}')
@@ -258,6 +326,8 @@ def pre_install(
         try:
             logger.debug(f'entering download branch download_id={download_id}')
             ensure_gdown_installed(dry_run=dry_run)
+            if sys.platform != 'win32':
+                _ensure_wine_available(dry_run=dry_run)
             output_path = f'downloaded_{int(time.time() * 1000)}.exe'
             _log_debug(f'gdown bootstrap complete, download_id={download_id}, output_path={output_path}')
             print(f'Downloading from Google Drive (ID: {download_id})...')
