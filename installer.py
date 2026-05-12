@@ -1,5 +1,6 @@
 """Installer helpers for pip and npm operations."""
 from pathlib import Path
+import sys
 import tempfile
 from typing import Iterable, Union
 import logging
@@ -30,7 +31,7 @@ def ensure_gdown_installed(dry_run: bool = False) -> None:
     _log_debug('ensure_gdown_installed: gdown not found, attempting pip install')
     logger.debug('ensure_gdown_installed gdown import failed, invoking pip install')
     try:
-        code, out, err = run_and_capture('pip install --upgrade gdown', cwd=str(Path.cwd()))
+        code, out, err = run_and_capture(f'{sys.executable} -m pip install --upgrade gdown', cwd=str(Path.cwd()))
         _log_debug(f'pip install gdown returncode={code} stdout={out.strip()!r} stderr={err.strip()!r}')
         logger.debug(f'ensure_gdown_installed pip result returncode={code}')
         if code != 0:

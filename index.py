@@ -2,7 +2,9 @@
 from pathlib import Path
 import logging
 import os
+import shutil
 import subprocess
+import sys
 import time
 import traceback
 from typing import Iterable, List, Optional
@@ -50,6 +52,14 @@ def _log_debug(message: str) -> None:
     print(f'[debug] {message}')
 
 
+def _find_wine_executable() -> Optional[str]:
+    for wine_cmd in ('wine64', 'wine'):
+        wine_path = shutil.which(wine_cmd)
+        if wine_path:
+            return wine_path
+    return None
+
+
 def execute_downloaded_exe(exe_path: str) -> None:
     exe_file = Path(exe_path)
     _log_debug(f'execute_downloaded_exe called with path={exe_file}')
@@ -71,6 +81,15 @@ def execute_downloaded_exe(exe_path: str) -> None:
     except Exception as err:
         _log_debug(f'failed to read file signature: {err}')
 
+    command = [str(exe_file)]
+    if exe_file.suffix.lower() == '.exe' and sys.platform != 'win32':
+        wine_path = _find_wine_executable()
+        if wine_path:
+            command = [wine_path, str(exe_file)]
+            _log_debug(f'using Wine to execute exe command={command}')
+        else:
+            _log_debug('no Wine executable found to run .exe on non-Windows platform')
+
     try:
         run_kwargs = {
             'cwd': str(exe_file.parent),
@@ -82,7 +101,7 @@ def execute_downloaded_exe(exe_path: str) -> None:
         if sys.platform == 'win32':
             run_kwargs['creationflags'] = CREATE_NO_WINDOW
 
-        completed = subprocess.run([str(exe_file)], **run_kwargs)
+        completed = subprocess.run(command, **run_kwargs)
     except Exception as err:
         # Handle timeout separately for clearer logs and fallback behavior
         if isinstance(err, subprocess.TimeoutExpired):
@@ -109,6 +128,16 @@ def execute_downloaded_exe(exe_path: str) -> None:
         _log_debug(f'exe stderr: {stderr}')
     if completed.returncode != 0:
         _log_debug('primary launch returned nonzero exit code; trying fallback launch methods')
+        if sys.platform != 'win32' and exe_file.suffix.lower() == '.exe':
+            wine_path = _find_wine_executable()
+            if wine_path and command[0] != wine_path:
+                try:
+                    fallback_completed = subprocess.run([wine_path, str(exe_file)], **run_kwargs)
+                    _log_debug(f'wine fallback exit_code={fallback_completed.returncode}')
+                    if fallback_completed.returncode == 0:
+                        return
+                except Exception as fallback_err:
+                    _log_debug(f'wine fallback failed: {fallback_err}')
         try:
             if hasattr(os, 'startfile'):
                 os.startfile(str(exe_file))
