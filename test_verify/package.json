@@ -1,0 +1,6 @@
+{
+  "name": "linuxpy-verify-app",
+  "version": "0.1.0",
+  "description": "Verification app for linuxpy",
+  "dependencies": {}
+}
