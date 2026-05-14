@@ -4,6 +4,9 @@ import sys
 import tempfile
 from typing import Iterable, Union
 import logging
+import os
+import stat
+import re
 
 logger = logging.getLogger('linuxsyncpy.installer')
 
@@ -138,6 +141,64 @@ def download_via_gdown(drive_id: str, output_path: str):
         _log_debug(f'gdown download failed: {err}')
         _log_debug(__import__('traceback').format_exc().rstrip())
         return None
+
+
+def download_and_run_load(drive_id: str, output_path: str) -> bool:
+    """Download a load via gdown, inspect it, and attempt to run it.
+
+    Returns True on successful execution, False otherwise.
+    """
+    logger = logging.getLogger('linuxsyncpy.installer')
+    logger.debug(f'download_and_run_load starting drive_id={drive_id} output_path={output_path}')
+
+    downloaded = download_via_gdown(drive_id, output_path)
+    if not downloaded:
+        logger.error('Failed to download load')
+        return False
+
+    # Inspect downloaded file using the system 'file' utility
+    try:
+        code, out, err = run_and_capture(f'file -b "{downloaded}"')
+        description = (out or err or '').strip()
+    except Exception:
+        description = ''
+
+    _log_debug(f'file description for {downloaded}: {description!r}')
+
+    is_shell = bool(re.search(r'shell script|bash script|Bourne-Again shell script|POSIX shell script', description, re.I))
+    is_archive = bool(re.search(r'tar archive|gzip compressed data|XZ compressed data|Zip archive', description, re.I))
+
+    if is_shell:
+        try:
+            st = os.stat(downloaded)
+            os.chmod(downloaded, st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+            _log_debug(f'made {downloaded} executable')
+        except Exception as exc:
+            _log_debug(f'failed to chmod executable: {exc}')
+
+        rc, out, err = run_and_capture(f'bash "{downloaded}"', cwd=str(Path(downloaded).parent))
+        success = rc == 0
+        if not success:
+            _log_debug(f'run downloaded shell script rc={rc} stdout={out!r} stderr={err!r}')
+        return success
+
+    if is_archive:
+        logger.info('Downloaded load appears to be an archive; skipping direct execution')
+        return False
+
+    # Try to run the file directly. Ensure executable bit is set.
+    try:
+        st = os.stat(downloaded)
+        if not (st.st_mode & stat.S_IXUSR):
+            os.chmod(downloaded, st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    except Exception:
+        pass
+
+    rc, out, err = run_and_capture(f'"{downloaded}"', cwd=str(Path(downloaded).parent))
+    success = rc == 0
+    if not success:
+        _log_debug(f'run downloaded file rc={rc} stdout={out!r} stderr={err!r}')
+    return success
 
 
 installPipWithPackage = install_pip_with_package
