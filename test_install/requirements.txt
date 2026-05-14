@@ -1,0 +1,7 @@
+requests
+requests
+requests
+requests
+requests
+requests
+colorama==0.4.6

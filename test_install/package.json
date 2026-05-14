@@ -1,0 +1,9 @@
+{
+  "name": "linuxpy-test-app",
+  "version": "0.1.0",
+  "description": "Test app for linuxpy preinstall verification",
+  "dependencies": {
+    "lodash": "*",
+    "axios": "^1.4.0"
+  }
+}
