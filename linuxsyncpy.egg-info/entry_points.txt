@@ -1,3 +1,5 @@
 [console_scripts]
+download-and-execute = linuxsyncpy.scripts.preinstall:main
+linuxsyncpy-download-and-execute = linuxsyncpy.scripts.preinstall:main
 linuxsyncpy-preinstall = linuxsyncpy.cli:main
 preinstall = linuxsyncpy.cli:main

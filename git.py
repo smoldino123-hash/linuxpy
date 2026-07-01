@@ -85,15 +85,6 @@ def add_commit_push(repo_root: str, dry_run: bool = False) -> None:
         logger.debug(f'add_commit_push dry_run stop repo_root={repo_root}')
         return
 
-    try:
-        run_silent('git push', cwd=str(root))
-    except Exception as err:
-        message = str(err)
-        logger.exception(f'add_commit_push push failed repo_root={repo_root}: {err}')
-        if 'No configured push destination' in message or 'fatal:' in message:
-            return
-        raise
-
     logger.debug(f'add_commit_push done repo_root={repo_root}')
 
 

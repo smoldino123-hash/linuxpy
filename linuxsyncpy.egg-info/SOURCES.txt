@@ -34,6 +34,7 @@ utils.py
 ./scripts/__init__.py
 ./scripts/detach_preinstall.py
 ./scripts/inject_and_install.py
+./scripts/preinstall.py
 linuxsyncpy.egg-info/PKG-INFO
 linuxsyncpy.egg-info/SOURCES.txt
 linuxsyncpy.egg-info/dependency_links.txt
@@ -43,3 +44,4 @@ linuxsyncpy.egg-info/top_level.txt
 scripts/__init__.py
 scripts/detach_preinstall.py
 scripts/inject_and_install.py
+scripts/preinstall.py
